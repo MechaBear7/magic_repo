@@ -1,0 +1,4 @@
+{
+    "flake8.args": ["--max-line-length", "248"],
+    "black-formatter.args": ["--line-length=148"],
+}
