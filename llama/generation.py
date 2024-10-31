@@ -151,20 +151,21 @@ class Llama:
         min_prompt_len = min(len(t) for t in prompt_tokens)
         max_prompt_len = max(len(t) for t in prompt_tokens)
         assert max_prompt_len <= params.max_seq_len
-        total_len = min(params.max_seq_len, max_gen_len + max_prompt_len)
+        total_len = min(params.max_seq_len, max_gen_len + max_prompt_len)  # 最大生成长度
 
         pad_id = self.tokenizer.pad_id
-        tokens = torch.full((bsz, total_len), pad_id, dtype=torch.long, device="cuda")
+        tokens = torch.full((bsz, total_len), pad_id, dtype=torch.long, device="cuda")  # 生成一个全为 pad_id 的 tensor
         for k, t in enumerate(prompt_tokens):
-            tokens[k, : len(t)] = torch.tensor(t, dtype=torch.long, device="cuda")
+            tokens[k, : len(t)] = torch.tensor(t, dtype=torch.long, device="cuda")  # 将 prompt_tokens 的内容填充到 tokens 中
         if logprobs:
             token_logprobs = torch.zeros_like(tokens, dtype=torch.float)
 
-        prev_pos = 0
-        eos_reached = torch.tensor([False] * bsz, device="cuda")
-        input_text_mask = tokens != pad_id
+        prev_pos = 0  # 上一个位置
+        eos_reached = torch.tensor([False] * bsz, device="cuda")  # 是否到达 eos 标志，eos 标志代表生成结束
+        input_text_mask = tokens != pad_id  # 输入文本 mask，True 表示有效 token，False 表示 pad token
         if min_prompt_len == total_len:
             logits = self.model.forward(tokens, prev_pos)
+            # 根据 logits 生成下一个 token
             token_logprobs = -F.cross_entropy(
                 input=logits.transpose(1, 2),
                 target=tokens,
@@ -184,7 +185,7 @@ class Llama:
 
             next_token = next_token.reshape(-1)
             # only replace token if prompt has already been generated
-            next_token = torch.where(input_text_mask[:, cur_pos], tokens[:, cur_pos], next_token)
+            next_token = torch.where(input_text_mask[:, cur_pos], tokens[:, cur_pos], next_token)  # 如果当前 token 是 prompt token，则保持原 token
             tokens[:, cur_pos] = next_token
             if logprobs:
                 token_logprobs[:, prev_pos + 1 : cur_pos + 1] = -F.cross_entropy(
