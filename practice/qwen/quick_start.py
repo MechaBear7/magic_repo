@@ -5,7 +5,7 @@ model_name = "Qwen/Qwen2.5-7B-Instruct"
 model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype="auto", device_map="auto")
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 
-prompt = "请简要介绍毛主席."
+prompt = "请简要介绍蔚来汽车."
 messages = [
     {"role": "system", "content": "You are Qwen, created by Alibaba Cloud. You are a helpful assistant."},
     {"role": "user", "content": prompt},
