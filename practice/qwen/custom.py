@@ -1,6 +1,6 @@
-from modelscope import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
-model_name = "qwen2.5-1.5b-base"
+model_name = "Qwen/Qwen2.5-1.5B"
 
 model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype="auto", device_map="auto")
 tokenizer = AutoTokenizer.from_pretrained(model_name)
@@ -10,11 +10,14 @@ messages = [
     {"role": "system", "content": "You are Qwen, created by Alibaba Cloud. You are a helpful assistant."},
     {"role": "user", "content": prompt},
 ]
+
 text = tokenizer.apply_chat_template(
     messages,
     tokenize=False,
     add_generation_prompt=True,
 )
+
+
 model_inputs = tokenizer([text], return_tensors="pt").to(model.device)
 
 generated_ids = model.generate(
