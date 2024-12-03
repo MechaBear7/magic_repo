@@ -1,27 +1,30 @@
+import os
+import torch
 from datasets import load_dataset, DatasetDict
 from transformers import AutoModelForCausalLM, AutoTokenizer, Trainer, TrainingArguments
 from transformers import DataCollatorForSeq2Seq
 from peft import get_peft_model, LoraConfig, TaskType
+from torch.nn.utils.rnn import pad_sequence
 
 
 dataset = load_dataset("allenai/tulu-3-sft-mixture")
 
 
-def subsample_dataset(dataset, percentage=0.05):
-    # 确保 percentage 在 0 到 1 之间
-    assert 0 < percentage <= 1, "Percentage must be between 0 and 1."
+# def subsample_dataset(dataset, percentage=0.05):
+#     # 确保 percentage 在 0 到 1 之间
+#     assert 0 < percentage <= 1, "Percentage must be between 0 and 1."
 
-    subsampled_dict = {}
-    for split in dataset.keys():  # 针对 train 和 validation 分别处理
-        split_dataset = dataset[split]
-        total_samples = len(split_dataset)
-        num_samples = max(1, int(total_samples * percentage))  # 至少保留一个样本
-        subsampled_dict[split] = split_dataset.select(range(num_samples))  # 选择前 num_samples 个样本
-    return DatasetDict(subsampled_dict)
+#     subsampled_dict = {}
+#     for split in dataset.keys():  # 针对 train 和 validation 分别处理
+#         split_dataset = dataset[split]
+#         total_samples = len(split_dataset)
+#         num_samples = max(1, int(total_samples * percentage))  # 至少保留一个样本
+#         subsampled_dict[split] = split_dataset.select(range(num_samples))  # 选择前 num_samples 个样本
+#     return DatasetDict(subsampled_dict)
 
 
-# 1% 的数据作为快速测试
-dataset = subsample_dataset(dataset, percentage=0.01)
+# # 1% 的数据作为快速测试
+# dataset = subsample_dataset(dataset, percentage=0.01)
 
 tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-1.5B")
 model = AutoModelForCausalLM.from_pretrained("Qwen/Qwen2.5-1.5B")
@@ -75,10 +78,14 @@ def process_func(examples):
     #     print(f"model_inputs[{i}]:\n {model_inputs_text[i]}")
     #     print(f"model_outputs[{i}]:\n {model_outputs_text[i]}")
 
+    padded_input_ids = pad_sequence([torch.tensor(x) for x in total_input_ids], batch_first=True, padding_value=tokenizer.pad_token_id)
+    padded_attention_mask = pad_sequence([torch.tensor(x) for x in total_attention_mask], batch_first=True, padding_value=0)
+    padded_labels = pad_sequence([torch.tensor(x) for x in total_labels], batch_first=True, padding_value=-100)
+
     return {
-        "input_ids": total_input_ids,
-        "attention_mask": total_attention_mask,
-        "labels": total_labels,
+        "input_ids": padded_input_ids,
+        "attention_mask": padded_attention_mask,
+        "labels": padded_labels,
     }
 
 
